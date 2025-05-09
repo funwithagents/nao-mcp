@@ -36,6 +36,11 @@ It focuses mainly on interactive high level APIs to allow the implementation of 
 - if you don’t have a Nao robot or if your current setup is not compatible with the available qi pacakges, you can run the MCP server with a “fake” robot ⇒ all the MCP tools will be available for execution, they will just do nothing real.
     - run the server in “fake” robot mode :  `python server.py --fake-robot`
 
+> [!IMPORTANT]
+> The version of LibQi (on which the communication with Nao is based) that is currently used, is a bit unstable. Sometimes, the initialization of the communication fails and it is not possible to retry in the same process.
+> In this case, an error log is displayed and the MCP server is not started. The only solution is to restart the python script, hoping that LibQi will finally manage to connect.
+> Sorry about that, let's hope we will be able to fix or workaround this at some point !
+
 ## Usage with Claude Desktop
 
 As any MCP server, you can add it to Claude Desktop. To do so, you will need to add it to your `claude_desktop_config.json` file.
@@ -44,13 +49,13 @@ As any MCP server, you can add it to Claude Desktop. To do so, you will need to 
     
     ```json
     "mcpServers": {
-        "nao-mcp": {
-            "command": "python",
-          "args": [
-            "path/to/repo/src/nao_mcp/server.py",
-            "--ip <nao-ip>"
-          ]
-        }
+      "nao-mcp": {
+        "command": "path/to/pythonvenv/bin/python",
+        "args": [
+          "path/to/repo/src/nao_mcp/server.py",
+          "--ip", "<nao-ip>"
+        ]
+      }
     }
     ```
     
@@ -58,16 +63,24 @@ As any MCP server, you can add it to Claude Desktop. To do so, you will need to 
     
     ```json
     "mcpServers": {
-        "nao-mcp": {
-            "command": "python",
-          "args": [
-            "path/to/repo/src/nao_mcp/server.py",
-            "--fake-robot"
-          ]
-        }
+      "nao-mcp": {
+        "command": "path/to/pythonvenv/bin/python",
+        "args": [
+          "path/to/repo/src/nao_mcp/server.py",
+          "--fake-robot"
+        ]
+      }
     }
     ```
-    
+
+> [!WARNING]
+> Because of a log currently displayed at the start of the MCP server (in LibQi), Claude Desktop displays an error message ("MCP nao-mcp: Unexpected toke ...").
+> This log is harmless and the MCP server is actually running properly.
+
+> [!IMPORTANT]
+> However, because of the unstability of LibQi explained above, the initialization of the MCP server might fail. 
+> In this case, Claude Desktop displays and error message ("MCP nao-mcp: Server disconnected. ...").
+> The only solution currently is to close and restart Claud Desktop, until the initialization actually works.
 
 # Content of the MCP server
 
