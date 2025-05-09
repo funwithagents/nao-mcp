@@ -25,19 +25,15 @@ class NaoAPI():
             logging.error("not a fake robot but ip or port is not set")
             return False
 
-        for x in range(0, 3):
-            try:
-                connection_url = "tcp://" + ip + ":" + str(args.port)
-                self.app = qi.Application(["SoundProcessingModule", "--qi-url=" + connection_url])
-                self.app = qi.Application()
-                self.app.start()
-                self.connected = True
-                break
-            except Exception as e:
-                logging.info("failed to start qi app, with error: %s", e)
-
-        if (not self.connected):
+        try:
+            connection_url = "tcp://" + ip + ":" + str(port)
+            self.app = qi.Application(["NaoAPI", "--qi-url=" + connection_url])
+            self.app.start()
+        except Exception as e:
+            logging.error("failed to start qi app, with error: %s", e)
             return False
+
+        self.connected = True
 
         self.memory = self.app.session.service("ALMemory")
         self.autonomouslife = self.app.session.service("ALAutonomousLife")
@@ -48,6 +44,7 @@ class NaoAPI():
         self.tts = self.app.session.service("ALTextToSpeech")
         self.animatedspeech = self.app.session.service("ALAnimatedSpeech")
         self.basicawareness = self.app.session.service("ALBasicAwareness")
+        return True
 
     def setTTSLanguage(self, language: str) -> bool:
         logging.debug("language = %s", language)
@@ -258,7 +255,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     global naoAPI
     naoAPI = NaoAPI()
-    naoAPI.connect(args.fake_robot, args.ip, args.port)
+    connected = naoAPI.connect(args.fake_robot, args.ip, args.port)
 
-    # Initialize and run the server
-    mcp.run(transport='stdio')
+    if (connected):
+        # Initialize and run the server
+        mcp.run(transport='stdio')
