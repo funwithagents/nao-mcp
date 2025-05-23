@@ -20,6 +20,16 @@ class NaoWebsocketServer:
                  fake_robot: bool,
                  with_joints_data: bool, with_audio_data: bool,
                  nao_ip: str, nao_port: int, websocket_port: int):
+        """Initialize the NaoWebsocketServer instance.
+
+        Args:
+            fake_robot: Whether to use fake robot mode
+            with_joints_data: Whether to send joints data
+            with_audio_data: Whether to send audio data
+            nao_ip: Robot IP address
+            nao_port: Robot port number
+            websocket_port: WebSocket port number
+        """
         self.fake_robot = fake_robot
         self.with_joints_data = with_joints_data
         self.with_audio_data = with_audio_data
@@ -449,9 +459,9 @@ async def main() -> None:
     parser.add_argument("--ip", type=str, default="",
                        help="Robot IP address")
     parser.add_argument("--port", type=int, default=9559,
-                       help="Naoqi port number")
+                       help="Naoqi port number, default is 9559")
     parser.add_argument("--websocket-port", type=int, default=8002,
-                       help="WebSocket port number")
+                       help="WebSocket port number, default is 8002")
     parser.add_argument("--with-joints-data", action="store_true",
                        help="To enable the sending of Nao joints data")
     parser.add_argument("--with-audio-data", action="store_true",

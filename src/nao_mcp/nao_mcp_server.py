@@ -24,6 +24,13 @@ class NaoMcpServer:
     def __init__(self,
                  fake_robot: bool,
                  nao_ip: str, nao_port: int):
+        """Initialize the NaoMcpServer instance.
+
+        Args:
+            fake_robot: Whether to use fake robot mode
+            nao_ip: Robot IP address
+            nao_port: Robot port number
+        """
         self.nao_api = NaoAPI(fake_robot,
                               None, None, None,
                               nao_ip, nao_port)
@@ -45,7 +52,15 @@ class NaoMcpServer:
     def _quick_add_tool(self, fn: Callable[..., Any]) -> None:
         self.mcp.add_tool(fn, fn.__name__, fn.__doc__)
 
-    def run(self, transport: Literal["stdio", "sse"] = "stdio") -> bool:   
+    def run(self, transport: Literal["stdio", "sse"] = "stdio") -> bool:
+        """Run the NaoMcpServer.
+
+        Args:
+            transport: The transport to use (must be one of: stdio, sse)
+
+        Returns:
+            bool: True if the server is running, False otherwise
+        """
         try:
             # Connect to Nao
             connected = asyncio.run(self.nao_api.connect())
@@ -195,6 +210,7 @@ class NaoMcpServer:
         """Get the list of available body actions.
         - to be called at the beginning of an interaction to know the list of available body actions
         - needed before calling the body_action tool
+
         Returns:
             str: JSON string containing the list of body actions
         """

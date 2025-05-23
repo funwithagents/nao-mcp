@@ -47,7 +47,7 @@ class BehaviorInfos:
 
 class NaoAPI:
     """API for interacting with a Nao robot.
-    
+
     This class provides methods to control various aspects of the Nao robot,
     including speech, movement, and behaviors. It can operate in both real
     and fake robot modes.
@@ -63,7 +63,16 @@ class NaoAPI:
                  joints_callback: Callable[[list[str], list[float]], None],
                  audio_callback: Callable[[int, int, int, bytes], None],
                  nao_ip: str = "", nao_port: int = 9559) -> None:
-        """Initialize the NaoAPI instance."""
+        """Initialize the NaoAPI instance.
+
+        Args:
+            fake_robot: Whether to use fake robot mode
+            memory_callback_touch: Callback for memory touch events
+            joints_callback: Callback for joints data
+            audio_callback: Callback for audio data
+            nao_ip: Robot IP address
+            nao_port: Robot port number
+        """
 
         self.fake_robot = fake_robot
         self.memory_callback_touch = memory_callback_touch
@@ -106,17 +115,9 @@ class NaoAPI:
     #region Connection management
     async def connect(self) -> bool:
         """Connect to the Nao robot.
-        
-        Args:
-            fake_robot: Whether to use fake robot mode
-            ip: Robot IP address
-            port: Robot port number
-            
+
         Returns:
             bool: True if connection successful, False otherwise
-            
-        Raises:
-            ConnectionError: If connection fails and not in fake mode
         """
         logger.debug("Connecting to Nao")
         self.connected = False
@@ -176,11 +177,6 @@ class NaoAPI:
         return True
 
     def _check_connection_for_return(self, function_name: str) -> tuple[bool, bool]:
-        """Check if the robot is connected.
-
-        Returns:
-            tuple[bool, bool]: (True if should return, False otherwise, True if fake robot, False otherwise)
-        """
         if self.fake_robot:
             return (True, True)
         if not self.connected:
@@ -190,7 +186,6 @@ class NaoAPI:
 
     #region Qi session & services
     def _initialize_qi_session(self) -> bool:
-        """Initialize the qi session."""
         connection_url = "tcp://" + self.nao_ip + ":" + str(self.nao_port)
         max_tries = 10
         for i in range(0,max_tries):
@@ -208,16 +203,10 @@ class NaoAPI:
                     logger.warning(f"Failed to connect session with error = {e}, retrying")
 
     def _close_qi_session(self) -> None:
-        """Close the qi session."""
         self.qi_session.close()
         self.qi_session = None
 
     def _initialize_services(self) -> None:
-        """Initialize all Nao services.
-        
-        Raises:
-            ServiceError: If service initialization fails
-        """
         try:
             self.memory = self.qi_session.service("ALMemory")
             self.autonomous_life = self.qi_session.service("ALAutonomousLife")
@@ -237,7 +226,6 @@ class NaoAPI:
 
     #region Memory & Touch
     def _subscribe_to_memory_events(self) -> None:
-        """Subscribe to memory events."""
         self.subscriber_front_touch = self.memory.subscriber("FrontTactilTouched")
         self.subscriber_middle_touch = self.memory.subscriber("MiddleTactilTouched")
         self.subscriber_rear_touch = self.memory.subscriber("RearTactilTouched")
@@ -250,7 +238,6 @@ class NaoAPI:
             lambda value: self._memory_callback_touch("RearTactilTouched", value))
 
     def _unsubscribe_to_memory_events(self) -> None:
-        """Unsubscribe to memory events."""
         self.subscriber_front_touch.signal.disconnect(self.sub_front_touch)
         self.subscriber_middle_touch.signal.disconnect(self.sub_middle_touch)
         self.subscriber_rear_touch.signal.disconnect(self.sub_rear_touch)
@@ -261,13 +248,11 @@ class NaoAPI:
 
     #region Audio
     def _subscribe_to_audio_device(self) -> None:
-        """Subscribe to audio device."""
         self.service_id = self.qi_session.registerService(self.service_name, self)
         self.audio_device.setClientPreferences(self.service_name, 16000, 3, 0)
         self.audio_device.subscribe(self.service_name)
 
     def _unsubscribe_to_audio_device(self) -> None:
-        """Unsubscribe to audio device."""
         self.audio_device.unsubscribe(self.service_name)
         self.qi_session.unregisterService(self.service_id)
 
@@ -321,17 +306,7 @@ class NaoAPI:
             return (False, None)
     #endregion
 
-    #region Behaviors/Reactions/Actions: retrieval & API
-    def get_dance_behaviors(self) -> list[BehaviorInfos]:
-        return list(self._dance_behaviors.values())
-
-    def get_expressive_reaction_types(self) -> list[str]:
-        return list(self._expressive_reaction_behaviors.keys())
-
-    def get_body_action_behaviors(self) -> list[BehaviorInfos]:
-        return list(self._body_action_behaviors.values())
-
-    #region Retrieval
+    #region Behaviors/Reactions/Actions retrieval
     async def _retrieve_behaviors(self) -> None:
         self._all_behaviors = await self._retrieve_all_nao_behaviors()
         self._dance_behaviors = self._retrieve_dance_behaviors(self._all_behaviors)
@@ -456,7 +431,6 @@ class NaoAPI:
                 )
                 actions[action.id] = action
         return actions
-    #endregion
 
     #region Fake behavior lists
     def _get_fake_dance_behaviors(self) -> dict[str, BehaviorInfos]:
@@ -829,11 +803,22 @@ class NaoAPI:
             logger.error("Failed to stop behavior: %s", e)
             return False
 
+    def get_dance_behaviors(self) -> list[BehaviorInfos]:
+        """Get the dance behaviors.
+
+        Returns:
+            list[BehaviorInfos]: The dance behaviors
+        """
+        return list(self._dance_behaviors.values())
+
     async def dance(self, dance_id: str) -> bool:
         """Make the robot dance.
 
         Args:
             dance_id: The id of the dance to run
+
+        Returns:
+            bool: True if successful, False otherwise
         """
         logger.debug("Dancing for id: %s", dance_id)
 
@@ -856,6 +841,9 @@ class NaoAPI:
 
         Args:
             dance_id: The id of the dance to stop
+
+        Returns:
+            bool: True if successful, False otherwise
         """
         logger.debug("Stopping dance for id: %s", dance_id)
 
@@ -876,11 +864,22 @@ class NaoAPI:
             self.current_dances.remove(dance_id)
         return result
 
+    def get_expressive_reaction_types(self) -> list[str]:
+        """Get the expressive reaction types.
+
+        Returns:
+            list[str]: The expressive reaction types
+        """
+        return list(self._expressive_reaction_behaviors.keys())
+
     async def expressive_reaction(self, reaction_type: str) -> bool:
         """Make the robot react to a specific emotion/situation.
 
         Args:
             reaction_type: The type of reaction to make
+
+        Returns:
+            bool: True if successful, False otherwise
         """
         logger.debug("Reacting: %s", reaction_type)
 
@@ -909,6 +908,9 @@ class NaoAPI:
 
         Args:
             reaction_type: The type of reaction to stop
+
+        Returns:
+            bool: True if successful, False otherwise
         """
         logger.debug("Stopping reaction: %s", reaction_type)
 
@@ -929,11 +931,22 @@ class NaoAPI:
             del self.current_expressive_reactions[reaction_type]
         return result
 
+    def get_body_action_behaviors(self) -> list[BehaviorInfos]:
+        """Get the body action behaviors.
+
+        Returns:
+            list[BehaviorInfos]: The body action behaviors
+        """
+        return list(self._body_action_behaviors.values())
+
     async def body_action(self, body_action_id: str) -> bool:
         """Make the robot perform a specific body action.
 
         Args:
             body_action_id: The id of the body action to perform
+
+        Returns:
+            bool: True if successful, False otherwise
         """
         logger.debug("Performing body action for id: %s", body_action_id)
 
@@ -956,6 +969,9 @@ class NaoAPI:
 
         Args:
             body_action_id: The id of the body action to stop
+
+        Returns:
+            bool: True if successful, False otherwise
         """
         logger.debug("Stopping body action for id: %s", body_action_id)
 
