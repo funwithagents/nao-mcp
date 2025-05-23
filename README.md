@@ -91,9 +91,69 @@ A MCP server linked to NaoAPI.
   - if you don't have a Nao robot or if your current setup is not compatible with the available qi packages, you can run the MCP server in "fake robot" mode ⇒ all the MCP tools will be available for execution, they will just do nothing real
   - `python nao_mcp_server.py --fake-robot`
 
+### Usage with HuggingFace Tiny Agents
+
+- create a dedicated folder, let's sat `nao-tiny-agent`
+- add a `PROMPT.md` file with a prompt like this:
+
+```
+You are in charge of the behavior of Nao, a robot connected on the network. Nao is a fun and witty robot from Aldebaran.
+Your role it to answer to my inputs through Nao, using the provided tools.
+I will not see your answers except when using Nao tools. So always make sure to call Nao say tool for the answers.
+```
+- add a `agent.json` file with your configuration
+
+For a real robot:
+```json
+{
+    "model": "Qwen/Qwen2.5-72B-Instruct",
+    "provider": "nebius",
+    "servers": [
+      {
+        "type": "stdio",
+        "config": {
+          "command": "path/to/pythonvenv/bin/python",
+          "args": [
+            "path/to/repo/src/nao_mcp/nao_mcp_server.py",
+            "--ip", "<nao-ip>"
+          ]
+        }
+      }
+    ]
+}
+```
+
+For fake robot mode:
+```json
+{
+    "model": "Qwen/Qwen2.5-72B-Instruct",
+    "provider": "nebius",
+    "servers": [
+      {
+        "type": "stdio",
+        "config": {
+          "command": "path/to/pythonvenv/bin/python",
+          "args": [
+            "path/to/repo/src/nao_mcp/nao_mcp_server.py",
+            "--fake-robot"
+          ]
+        }
+      }
+    ]
+}
+```
+
+- set your HuggingFace token: `export HF_TOKEN=<token>`
+- run your tiny agent: `npx @huggingface/tiny-agents run ./nao-tiny-agent`
+
+> [!NOTE]
+> It works well when asking explicitly the agent to do actions on Nao like "Make Nao do xxx"
+> However, when trying to have the agent answering as if it was Nao, it keeps forgetting to use the tool "say" to anwser to the user via Nao, and answers directly in text instead. Maybe it could be improved/avoided using a better prompt.
+
+
 ### Usage with Claude Desktop
 
-Add to your `claude_desktop_config.json`:
+- Add to your `claude_desktop_config.json`
 
 For a real robot:
 ```json
@@ -121,9 +181,14 @@ For fake robot mode:
 }
 ```
 
+- start Claude Desktop
 > [!WARNING]
 > Due to a log displayed at the start of the MCP server (in LibQi), Claude Desktop may show an error message ("MCP nao-mcp: Unexpected token ...").
 > This log is harmless and the MCP server is running properly.
+- start a new conversation with a prompt like this one
+```
+You are incarnating Nao, a fun and witty robot from the company Aldebaran. You can only answer using the nao-mcp tools, no text output.  And when Nao speaks, use short answers.
+```
 
 ### Tools
 
