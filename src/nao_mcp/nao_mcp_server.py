@@ -48,6 +48,9 @@ class NaoMcpServer:
         self._quick_add_tool(self.expressive_reaction)
         self._quick_add_tool(self.get_body_actions_list)
         self._quick_add_tool(self.body_action)
+        self._quick_add_tool(self.get_app_list)
+        self._quick_add_tool(self.run_app)
+        self._quick_add_tool(self.stop_app)
 
     def _quick_add_tool(self, fn: Callable[..., Any]) -> None:
         self.mcp.add_tool(fn, fn.__name__, fn.__doc__)
@@ -224,7 +227,7 @@ class NaoMcpServer:
 
         Args:
             body_action_id: The id of the body action to perform
-            
+
         Returns:
             str: Status message indicating success or failure
         """
@@ -232,6 +235,52 @@ class NaoMcpServer:
         if result:
             return f"Nao has performed the body action with id '{body_action_id}'"
         return f"Nao failed to perform the body action with id '{body_action_id}'"
+
+    def get_app_list(self) -> str:
+        """Get the list of available apps.
+        - to be called at the beginning of an interaction to know the list of available apps
+        - needed before calling the run_app or stop_app tools
+
+        Returns:
+            str: JSON string containing app information with
+                - the id of the app
+                - the name in different languages
+                - the name of the behavior to use to start the app
+                - the description of the app
+        """
+        logging.debug("Retrieving app list")
+        app_behaviors = self.nao_api.get_app_behaviors()
+        return json.dumps([asdict(b) for b in app_behaviors])
+
+    async def run_app(self, app_id: str) -> str:
+        """Make Nao run an app.
+        - you need to have called the get_app_list tool before, to know the list of available apps
+
+        Args:
+            app_id: The id of the app to run
+
+        Returns:
+            str: Status message indicating success or failure
+        """
+        result = await self.nao_api.run_app(app_id)
+        if result:
+            return f"Nao has run the app with id '{app_id}'"
+        return f"Nao failed to run the app with id '{app_id}'"
+
+    async def stop_app(self, app_id: str) -> str:
+        """Make Nao stop a running app.
+        - you need to have called the get_app_list tool before, to know the list of available apps
+
+        Args:
+            app_id: The id of the app to stop
+
+        Returns:
+            str: Status message indicating success or failure
+        """
+        result = await self.nao_api.stop_app(app_id)
+        if result:
+            return f"Nao has stopped the app with id '{app_id}'"
+        return f"Nao failed to stop the app with id '{app_id}'"
     #endregion
 
 def main() -> None:

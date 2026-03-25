@@ -72,6 +72,9 @@ class NaoWebsocketServer:
         self.command_mapping["GetBodyActionBehaviors"] = self._apply_command_get_body_action_behaviors
         self.command_mapping["BodyAction"] = self._apply_command_body_action
         self.command_mapping["StopBodyAction"] = self._apply_command_stop_body_action
+        self.command_mapping["GetAppBehaviors"] = self._apply_command_get_app_behaviors
+        self.command_mapping["RunApp"] = self._apply_command_run_app
+        self.command_mapping["StopApp"] = self._apply_command_stop_app
 
         self.command_mapping["SetBasicAwarenessState"] = self._apply_command_set_basic_awareness_state
         self.command_mapping["SetBreathingEnabled"] = self._apply_command_set_breathing_enabled
@@ -417,7 +420,34 @@ class NaoWebsocketServer:
         self._log(logging.INFO, "applying command 'StopBodyAction' with bodyActionId = " + body_action_id)
         result = await self.nao_api.stop_body_action(body_action_id)
         return (result, None)
-        
+
+    async def _apply_command_get_app_behaviors(self, command_data) -> tuple[bool, Any]:
+        self._log(logging.INFO, "applying command 'GetAppBehaviors'")
+        data: list[BehaviorInfos] = self.nao_api.get_app_behaviors()
+        message_data = []
+        for behavior in data:
+            message_data.append({
+                "id": behavior.id,
+                "behaviorName": behavior.behavior_name,
+                "localizedName": asdict(behavior.localized_name),
+                "description": behavior.description
+            })
+        return (True, message_data)
+
+    async def _apply_command_run_app(self, command_data) -> tuple[bool, Any]:
+        app_id = str(command_data["appId"])
+
+        self._log(logging.INFO, "applying command 'RunApp' with appId = " + app_id)
+        result = await self.nao_api.run_app(app_id)
+        return (result, None)
+
+    async def _apply_command_stop_app(self, command_data) -> tuple[bool, Any]:
+        app_id = str(command_data["appId"])
+
+        self._log(logging.INFO, "applying command 'StopApp' with appId = " + app_id)
+        result = await self.nao_api.stop_app(app_id)
+        return (result, None)
+
 
     async def _apply_command_set_basic_awareness_state(self, command_data) -> tuple[bool, Any]:
         enabled = bool(command_data["enabled"])

@@ -104,10 +104,12 @@ class NaoAPI:
         self._dance_behaviors = dict[str, BehaviorInfos]()
         self._expressive_reaction_behaviors = dict[str, list[BehaviorInfos]]()
         self._body_action_behaviors = dict[str, BehaviorInfos]()
+        self._app_behaviors = dict[str, BehaviorInfos]()
 
         self.current_dances = list[str]()
         self.current_expressive_reactions = dict[str, str]()
         self.current_body_actions = list[str]()
+        self.current_apps = list[str]()
         self.current_behaviors = list[str]()
 
         self.joints_data_sync_activated = False
@@ -317,11 +319,13 @@ class NaoAPI:
         self._expressive_reaction_behaviors["Sad"] = self._retrieve_reactions_for_tag(self._all_behaviors, "Stand", "sad")
         self._expressive_reaction_behaviors["HeadTouched"] = self._retrieve_reactions_for_head_touched(self._all_behaviors)
         self._body_action_behaviors = self._retrieve_body_actions(self._all_behaviors)
+        self._app_behaviors = self._retrieve_app_behaviors(self._all_behaviors)
 
     async def _retrieve_fake_behaviors(self) -> None:
         self._dance_behaviors = self._get_fake_dance_behaviors()
         self._expressive_reaction_behaviors = self._get_fake_reaction_behaviors()
         self._body_action_behaviors = self._get_fake_body_action_behaviors()
+        self._app_behaviors = self._get_fake_app_behaviors()
 
 
     async def _retrieve_all_nao_behaviors(self) -> list[NaoBehavior]:
@@ -432,6 +436,28 @@ class NaoAPI:
                 actions[action.id] = action
         return actions
 
+    def _retrieve_app_behaviors(self, behaviors: list[NaoBehavior]) -> dict[str, BehaviorInfos]:
+        excluded_uuids = {"animations", "boot-config", "daps", "default_launchpad_plugins", "fall-recovery"}
+        apps = dict[str, BehaviorInfos]()
+        for behavior in behaviors:
+            uuid = behavior.package_uuid
+            if uuid in excluded_uuids:
+                continue
+            if "dialog" in uuid:
+                continue
+            if "dance" in behavior.description:
+                continue
+            if behavior.behavior_path != ".":
+                continue
+            app = BehaviorInfos(
+                id=behavior.behavior_name,
+                behavior_name=behavior.behavior_name,
+                localized_name=behavior.localized_name,
+                description=behavior.description
+            )
+            apps[app.id] = app
+        return apps
+
     #region Fake behavior lists
     def _get_fake_dance_behaviors(self) -> dict[str, BehaviorInfos]:
         dances = dict[str, BehaviorInfos]()
@@ -509,6 +535,30 @@ class NaoAPI:
                                            fr_FR="Lève le bras droit"),
             description="Raise right arm")
         return reactions
+
+    def _get_fake_app_behaviors(self) -> dict[str, BehaviorInfos]:
+        apps = dict[str, BehaviorInfos]()
+        apps["follow-me"] = BehaviorInfos(
+            id="follow-me",
+            behavior_name="follow-me",
+            localized_name=LocalizedString(en_US="Follow me", fr_FR="Suis moi"),
+            description="Nao gives you its hand and walks with you. He will walk as long as its arm is raised, forward or backward according to the position of the arm. \n\nIf you have the arm at the vertical, and try to move it to the left or right, Nao will do sidesteps in the given direction.")
+        apps["presentation"] = BehaviorInfos(
+            id="presentation",
+            behavior_name="presentation",
+            localized_name=LocalizedString(en_US="Presentation", fr_FR="Présentation"),
+            description="ao speaks about itself and what it can be used for.")
+        apps["soccer-demonstration"] = BehaviorInfos(
+            id="soccer-demonstration",
+            behavior_name="soccer-demonstration",
+            localized_name=LocalizedString(en_US="Soccer Demonstration", fr_FR="Démo de foot"),
+            description="Simple soccer behavior. Nao asks the user for a red ball, takes it and throws it in front of him. After that, he tracks the ball, walks near it and shoots. He continues while he sees the ball or the user gives a tap on his head.")
+        apps["walktotheball"] = BehaviorInfos(
+            id="walktotheball",
+            behavior_name="walktotheball",
+            localized_name=LocalizedString(en_US="Walk to the ball", fr_FR="Marche vers la balle"),
+            description="Take a red ball in your hand and show it to Nao. If he is far, he will try to come towards the ball. If too close, he will walk backward.")
+        return apps
     #endregion
 
     #endregion
@@ -990,5 +1040,66 @@ class NaoAPI:
         result = await self.stop_behavior(self._body_action_behaviors[body_action_id].behavior_name)
         if body_action_id in self.current_body_actions:
             self.current_body_actions.remove(body_action_id)
+        return result
+
+    def get_app_behaviors(self) -> list[BehaviorInfos]:
+        """Get the app behaviors.
+
+        Returns:
+            list[BehaviorInfos]: The app behaviors
+        """
+        return list(self._app_behaviors.values())
+
+    async def run_app(self, app_id: str) -> bool:
+        """Run a specific app behavior.
+
+        Args:
+            app_id: The id of the app to run
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        logger.debug("Running app for id: %s", app_id)
+
+        if (app_id not in self._app_behaviors):
+            logger.error("App with id '%s' not found", app_id)
+            return False
+
+        should_return, result = self._check_connection_for_return("run_app")
+        if should_return:
+            return result
+
+        self.current_apps.append(app_id)
+        result = await self.run_behavior(self._app_behaviors[app_id].behavior_name)
+        if app_id in self.current_apps:
+            self.current_apps.remove(app_id)
+        return result
+
+    async def stop_app(self, app_id: str) -> bool:
+        """Stop a running app behavior.
+
+        Args:
+            app_id: The id of the app to stop
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        logger.debug("Stopping app for id: %s", app_id)
+
+        if (app_id not in self._app_behaviors):
+            logger.error("App with id '%s' not found", app_id)
+            return False
+
+        should_return, result = self._check_connection_for_return("stop_app")
+        if should_return:
+            return result
+
+        if (app_id not in self.current_apps):
+            logger.error("App with id '%s' not found in current apps", app_id)
+            return False
+
+        result = await self.stop_behavior(self._app_behaviors[app_id].behavior_name)
+        if app_id in self.current_apps:
+            self.current_apps.remove(app_id)
         return result
     #endregion
